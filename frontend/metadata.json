@@ -1,0 +1,6 @@
+{
+  "name": "FMCG Distro - AI-Powered Distribution Management System",
+  "description": "Enterprise FMCG distribution platform with AI invoice scanning, FEFO inventory tracking, predictive reordering, collections management, and intelligent assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
