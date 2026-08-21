@@ -30,7 +30,8 @@ export const saleService = {
     if (!customer) throw AppError.notFound('Customer not found');
 
     // Deduct stock using FEFO (BR-006)
-    const transaction = db.transaction(() => {
+    db.exec('BEGIN');
+    try {
       const invoiceNumber = saleRepository.nextInvoiceNumber(tenantId);
       const saleId = uuid();
       const now = new Date();
@@ -116,10 +117,12 @@ export const saleService = {
         reason: 'Sale completed',
       });
 
-      return saleRepository.findById(saleId, tenantId);
-    });
-
-    const result = transaction() as any;
-    return { ...result, items: JSON.parse(result.items || '[]') };
+      const result = saleRepository.findById(saleId, tenantId) as any;
+      db.exec('COMMIT');
+      return { ...result, items: JSON.parse(result.items || '[]') };
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
   },
 };

@@ -34,7 +34,8 @@ export const purchaseService = {
     const supplier = supplierRepository.findById(data.supplierId, tenantId);
     if (!supplier) throw AppError.notFound('Supplier not found');
 
-    const transaction = db.transaction(() => {
+    db.exec('BEGIN');
+    try {
       const invoiceNumber = purchaseRepository.nextInvoiceNumber(tenantId);
       const purchaseId = uuid();
       const now = new Date();
@@ -118,11 +119,13 @@ export const purchaseService = {
         newValue: { total: data.totalAmount, supplier: data.supplierName, status: data.status },
       });
 
-      return purchaseRepository.findById(purchaseId, tenantId);
-    });
-
-    const result = transaction() as any;
-    return { ...result, items: JSON.parse(result.items || '[]') };
+      const result = purchaseRepository.findById(purchaseId, tenantId) as any;
+      db.exec('COMMIT');
+      return { ...result, items: JSON.parse(result.items || '[]') };
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
   },
 
   confirm(id: string, tenantId: string, actor: { name: string; role: string }) {
@@ -134,7 +137,8 @@ export const purchaseService = {
     const items = JSON.parse(purchase.items || '[]');
     const db = getDb();
 
-    const transaction = db.transaction(() => {
+    db.exec('BEGIN');
+    try {
       for (const item of items) {
         const totalQty = item.quantity + (item.freeQuantity ?? 0);
         const dte = calcDaysToExpiry(item.expiryDate);
@@ -180,9 +184,13 @@ export const purchaseService = {
         previousValue: { status: 'Draft' },
         newValue: { status: 'Confirmed' },
       });
-    });
 
-    transaction();
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+
     const result = purchaseRepository.findById(id, tenantId) as any;
     return { ...result, items: JSON.parse(result.items || '[]') };
   },

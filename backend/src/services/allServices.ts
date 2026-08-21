@@ -45,7 +45,7 @@ export const authService = {
         email: user.email,
       },
       env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRES_IN }
+      { expiresIn: env.JWT_EXPIRES_IN as '24h' }
     );
 
     // Update last_active
@@ -139,7 +139,7 @@ export const authService = {
         email: newUser.email,
       },
       env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRES_IN }
+      { expiresIn: env.JWT_EXPIRES_IN as '24h' }
     );
 
     return {
