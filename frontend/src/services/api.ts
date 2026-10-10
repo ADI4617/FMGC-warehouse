@@ -104,4 +104,17 @@ export const api = {
   // Tenant
   getTenant: () => request<any>('/tenant'),
   updateTenant: (data: any) => request<any>('/tenant', { method: 'PUT', body: JSON.stringify(data) }),
+
+  // AI
+  aiChat: (message: string) =>
+    request<{ response: string }>('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+
+  scanInvoice: (imageBase64: string, mimeType = 'image/jpeg') =>
+    request<{ extractedData: string }>('/ai/scan-invoice', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'scan', imageBase64, mimeType }),
+    }),
 };

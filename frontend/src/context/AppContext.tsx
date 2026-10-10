@@ -541,7 +541,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       address: 'Central Logistics Hub, Sector 12',
       city: 'Mumbai',
       state: 'Maharashtra',
-      currency: 'USD',
+      currency: 'INR',
       plan: data.plan || 'Enterprise',
       status: 'active',
       createdDate: new Date().toISOString().substring(0, 10),
@@ -1152,8 +1152,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return c;
     }));
 
-    addAuditLog('RECORD_PAYMENT', 'PaymentCollection', receiptNum, `Collected $${amount.toFixed(2)} from ${cust.name} via ${method}`);
-    addToast('success', 'Payment Recorded', `Receipt ${receiptNum} issued for $${amount.toFixed(2)} from ${cust.name}`);
+    addAuditLog('RECORD_PAYMENT', 'PaymentCollection', receiptNum, `Collected ₹${amount.toFixed(2)} from ${cust.name} via ${method}`);
+    addToast('success', 'Payment Recorded', `Receipt ${receiptNum} issued for ₹${amount.toFixed(2)} from ${cust.name}`);
   };
 
   // AI Invoice Scanner Handlers
@@ -1283,7 +1283,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setPurchases(prev => [newPurchase, ...prev]);
     setExtractedInvoice(prev => ({ ...prev, status: 'confirmed' }));
 
-    addAuditLog('CONFIRM_AI_INVOICE', 'PurchaseTransaction', extractedInvoice.invoiceNumber, `Confirmed AI invoice with ${purchaseItems.length} lines. Inbound total: $${totalVal.toFixed(2)}`);
+    addAuditLog('CONFIRM_AI_INVOICE', 'PurchaseTransaction', extractedInvoice.invoiceNumber, `Confirmed AI invoice with ${purchaseItems.length} lines. Inbound total: ₹${totalVal.toFixed(2)}`);
     addToast('success', 'Invoice Confirmed & Stock Updated', `Added ${purchaseItems.reduce((acc, i) => acc + i.quantity, 0)} units from ${extractedInvoice.supplierName} to stock ledger.`);
   };
 
@@ -1292,7 +1292,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     addToast('info', 'Scanner Reset', 'Invoice scan data restored to demo state.');
   };
 
-  // AI Assistant Query Engine
+  // AI Assistant Query Engine — calls Java backend → Gemini
   const sendChatMessage = async (text: string) => {
     const userMsg: ChatMessage = {
       id: 'msg-' + Date.now(),
@@ -1300,107 +1300,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       text
     };
-
     setChatMessages(prev => [...prev, userMsg]);
 
-    const lower = text.toLowerCase();
-    setTimeout(() => {
-      let reply: ChatMessage;
+    try {
+      const res = await api.aiChat(text);
+      const responseText: string = res.data?.response ?? 'No response received.';
 
-      if (lower.includes('city retailers') || (lower.includes('pending') && lower.includes('city'))) {
-        const cust = customers.find(c => c.name.toLowerCase().includes('city'));
-        const pendingTotal = cust ? cust.outstandingBalance : 14250.00;
+      const assistantMsg: ChatMessage = {
+        id: 'msg-' + (Date.now() + 1),
+        sender: 'assistant',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: responseText
+      };
+      setChatMessages(prev => [...prev, assistantMsg]);
+    } catch (err: any) {
+      const errMsg = err?.message || 'Unknown error';
+      let displayText: string;
 
-        reply = {
-          id: 'msg-' + (Date.now() + 1),
-          sender: 'assistant',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: `Currently, there is $${pendingTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })} pending from City Retailers. This spans across 4 overdue invoices.`,
-          structuredData: {
-            type: 'pending_invoices',
-            title: 'TOP PENDING INVOICES',
-            totalHighlight: `$${pendingTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-            items: [
-              { label: 'INV-802', value: '$6,400', percentage: 45, color: '#8B2626' },
-              { label: 'INV-815', value: '$4,250', percentage: 30, color: '#D4AF37' },
-              { label: 'INV-829', value: '$2,100', percentage: 15, color: '#1A1A1A' },
-              { label: 'INV-833', value: '$1,500', percentage: 10, color: '#78746D' }
-            ],
-            actionButtons: [
-              { label: 'View Collection List', icon: 'receipt_long', actionType: 'navigate_collections', payload: { customerId: 'cust-1' } },
-              { label: 'Send Reminder', icon: 'mail', actionType: 'send_reminder', payload: { customerId: 'cust-1' } }
-            ]
-          }
-        };
-      } else if (lower.includes('sold the most') || lower.includes('top product') || lower.includes('best selling')) {
-        reply = {
-          id: 'msg-' + (Date.now() + 1),
-          sender: 'assistant',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: `Sparkling Cola 500ml x24 (BEV-092-COL) is your highest velocity product this month with 2,420 units sold ($36,300 total revenue), followed by Liquid Detergent 2L.`,
-          structuredData: {
-            type: 'top_products',
-            title: 'TOP SELLING PRODUCTS (MTD)',
-            items: [
-              { label: 'BEV-092-COL (Cola x24)', value: '2,420 units ($36.3k)', percentage: 85, color: '#1A1A1A' },
-              { label: 'HOU-882-DET (Detergent 2L)', value: '890 units ($7.1k)', percentage: 45, color: '#234E3E' },
-              { label: 'DOV-SOAP-100 (Dove 100g)', value: '740 units ($1.3k)', percentage: 38, color: '#8C733E' },
-              { label: 'SNA-110-CHI (Chips 150g)', value: '620 units ($2.4k)', percentage: 30, color: '#9C5B23' }
-            ],
-            actionButtons: [
-              { label: 'View Sales Report', icon: 'assessment', actionType: 'navigate_reports' }
-            ]
-          }
-        };
-      } else if (lower.includes('expiry') || lower.includes('risk') || lower.includes('expiring')) {
-        reply = {
-          id: 'msg-' + (Date.now() + 1),
-          sender: 'assistant',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: `You have 3 high-risk batches nearing expiry within 15 days. Immediate FEFO clearance or supplier returns are recommended.`,
-          structuredData: {
-            type: 'expiry_risks',
-            title: 'CRITICAL EXPIRY RISK BATCHES',
-            items: [
-              { label: 'DAI-YOG-01 (Greek Yogurt Plain)', value: '45 units (4 Days Left)', badge: 'FEFO 30% Promo', color: '#8B2626' },
-              { label: 'DAI-405-MIL (Full Cream Milk 1L)', value: '12 Damaged (8 Days Left)', badge: 'Write-off', color: '#8B2626' },
-              { label: 'BEV-JUI-12 (Orange Juice 250ml)', value: '120 units (12 Days Left)', badge: 'FEFO 15% Promo', color: '#D4AF37' }
-            ],
-            actionButtons: [
-              { label: 'Go to Expiry Center', icon: 'event_busy', actionType: 'navigate_inventory' }
-            ]
-          }
-        };
-      } else if (lower.includes('reorder') || lower.includes('low stock') || lower.includes('threshold')) {
-        reply = {
-          id: 'msg-' + (Date.now() + 1),
-          sender: 'assistant',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: `AI Stock Analysis identified 2 items requiring urgent replenishment: Parle-G 80g (stock depleted in ~2 days) and Full Cream Milk 1L (currently 0 stock).`,
-          structuredData: {
-            type: 'reorder_summary',
-            title: 'SUGGESTED REORDER QUANTITIES',
-            items: [
-              { label: 'PAR-GLU-80 (Parle-G 80g)', value: 'Suggested PO: 500 units', color: '#8C733E' },
-              { label: 'DAI-405-MIL (UHT Milk 1L)', value: 'Suggested PO: 250 units', color: '#8B2626' },
-              { label: 'SNA-110-CHI (Chips 150g)', value: 'Suggested PO: 300 units', color: '#9C5B23' }
-            ],
-            actionButtons: [
-              { label: 'Generate AI POs', icon: 'auto_awesome', actionType: 'trigger_ai_optimizer' }
-            ]
-          }
-        };
+      if (errMsg.includes('AI_NOT_CONFIGURED') || errMsg.includes('GEMINI_API_KEY')) {
+        displayText = '⚠️ AI features are not configured. Please set the GEMINI_API_KEY environment variable in the Render backend service to enable AI responses.';
+      } else if (errMsg.includes('403') || errMsg.includes('access denied')) {
+        displayText = '⚠️ AI access denied. Your GEMINI_API_KEY may be invalid or expired. Please check the key in your Render environment variables.';
       } else {
-        reply = {
-          id: 'msg-' + (Date.now() + 1),
-          sender: 'assistant',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: `I've analyzed your distributor database for "${text}". Total revenue today is $12,450 (+12% vs yesterday), active stock value is $120,000 across 12 SKUs, and total receivables stand at $45,300. How else can I assist with your supply chain decisions?`
-        };
+        displayText = `⚠️ AI service error: ${errMsg}. Please try again.`;
       }
 
-      setChatMessages(prev => [...prev, reply]);
-    }, 600);
+      const errorMsg: ChatMessage = {
+        id: 'msg-err-' + Date.now(),
+        sender: 'assistant',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: displayText
+      };
+      setChatMessages(prev => [...prev, errorMsg]);
+    }
   };
 
   const resetToDefaults = () => {

@@ -26,7 +26,7 @@ export const INITIAL_TENANT: BusinessTenant = {
   address: 'Warehouse Block 4-C, Logistics Corridor, Andheri East',
   city: 'Mumbai',
   state: 'Maharashtra',
-  currency: 'USD',
+  currency: 'INR',
   plan: 'Enterprise',
   status: 'active',
   createdDate: '2025-04-12',
