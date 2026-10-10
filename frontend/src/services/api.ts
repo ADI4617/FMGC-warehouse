@@ -1,4 +1,9 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
+const normalizeApiBase = (baseUrl: string) => {
+  const trimmed = baseUrl.replace(/\/+$/, '');
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+};
+
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1');
 
 function getToken(): string | null {
   return localStorage.getItem('fmcg_jwt_token');
