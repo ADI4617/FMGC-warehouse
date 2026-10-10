@@ -210,5 +210,5 @@ VALUES ('ins-2','tnt-001','expiry','Near Expiry: Britannia NutriChoice Batch','B
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO predictive_insights(id,tenant_id,type,title,description,sku,action_label,action_payload,severity,timestamp)
-VALUES ('ins-3','tnt-001','collection','Overdue Collection: Daily Needs Pvt Ltd','Customer CUST-004 has overdue amount of Rs 18,000. Last payment was received 45 days ago.','NULL','Record Collection','{"customerId":"cust-4"}','high','2025-06-15 08:00:00')
+VALUES ('ins-3','tnt-001','collection','Overdue Collection: Daily Needs Pvt Ltd','Customer CUST-004 has overdue amount of Rs 18,000. Last payment was received 45 days ago.',NULL,'Record Collection','{"customerId":"cust-4"}','high','2025-06-15 08:00:00')
 ON CONFLICT (id) DO NOTHING;
