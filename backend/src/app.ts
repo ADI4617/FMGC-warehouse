@@ -7,10 +7,21 @@ import { env } from './config/env.js';
 
 export const app = express();
 
+const allowedOrigins = env.CORS_ORIGIN.split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
 // Security and utility middlewares
 app.use(helmet());
 app.use(cors({
-  origin: env.CORS_ORIGIN || '*',
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(null, false);
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
