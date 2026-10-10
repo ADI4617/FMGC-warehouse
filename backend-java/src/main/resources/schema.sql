@@ -1,5 +1,6 @@
 -- FMGC Warehouse Schema for PostgreSQL
 -- Fully idempotent: safe to run on every startup
+-- Compatible with Spring Boot SQL script initializer (no DO $$ blocks)
 
 CREATE TABLE IF NOT EXISTS tenants (
     id VARCHAR(36) PRIMARY KEY,
@@ -201,68 +202,20 @@ CREATE TABLE IF NOT EXISTS predictive_insights (
     timestamp VARCHAR(500)
 );
 
--- Indexes (each wrapped to be safe on repeated runs)
-DO $$ BEGIN
-    CREATE INDEX idx_products_tenant_id ON products(tenant_id);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
+-- Indexes
+-- CREATE INDEX IF NOT EXISTS is fully supported on PostgreSQL 9.5+ (Render uses 14+)
+-- These are plain statements with no procedural blocks, safe for Spring Boot's script splitter
 
-DO $$ BEGIN
-    CREATE INDEX idx_batches_tenant_id ON batches(tenant_id);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE INDEX idx_batches_expiry ON batches(expiry_date);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE INDEX idx_customers_tenant_id ON customers(tenant_id);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE INDEX idx_suppliers_tenant_id ON suppliers(tenant_id);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE INDEX idx_sales_tenant_id ON sales(tenant_id);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE INDEX idx_sales_date ON sales(date);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE INDEX idx_purchases_tenant_id ON purchases(tenant_id);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE INDEX idx_stock_movements_tenant_id ON stock_movements(tenant_id);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE INDEX idx_collections_tenant_id ON collections(tenant_id);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE INDEX idx_audit_logs_tenant_id ON audit_logs(tenant_id);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE INDEX idx_users_tenant_id ON users(tenant_id);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE INDEX idx_users_email ON users(email);
-EXCEPTION WHEN duplicate_table THEN NULL;
-END $$;
+CREATE INDEX IF NOT EXISTS idx_products_tenant_id ON products(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_batches_tenant_id ON batches(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_batches_expiry ON batches(expiry_date);
+CREATE INDEX IF NOT EXISTS idx_customers_tenant_id ON customers(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_suppliers_tenant_id ON suppliers(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_sales_tenant_id ON sales(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date);
+CREATE INDEX IF NOT EXISTS idx_purchases_tenant_id ON purchases(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_tenant_id ON stock_movements(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_collections_tenant_id ON collections(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant_id ON audit_logs(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
