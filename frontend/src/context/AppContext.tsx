@@ -80,8 +80,8 @@ interface AppContextType {
   setActiveTab: (tab: NavigationTab) => void;
   navigateTo: (tab: NavigationTab | string) => void;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => boolean;
-  signup: (data: SignupData) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  signup: (data: SignupData) => Promise<boolean>;
   logout: () => void;
   forgotPassword: (email: string) => boolean;
 
@@ -502,7 +502,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Authentication Flow
-  const login = (email: string, _password: string): boolean => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     const trimmedEmail = email.trim().toLowerCase();
     const matchedUser = users.find(u => u.email.toLowerCase() === trimmedEmail);
 
@@ -511,7 +511,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         addToast('error', 'Access Denied', `Account for ${matchedUser.name} is ${matchedUser.status}. Contact administrator.`);
         return false;
       }
-      setCurrentUser(matchedUser);
+      try {
+        const res = await api.login({ email: trimmedEmail, password });
+        setToken(res.data.token);
+        setCurrentUser({ ...matchedUser, ...res.data.user });
+      } catch (err: any) {
+        addToast('error', 'Sign In Failed', err?.message || 'Unable to authenticate with the backend.');
+        return false;
+      }
       setIsAuthenticated(true);
       addAuditLog('USER_LOGIN', 'Authentication', matchedUser.email, `Successful login as ${matchedUser.role}`, undefined, 'Session authorized');
       addToast('success', 'Welcome Back', `Signed in as ${matchedUser.name} (${matchedUser.role})`);
@@ -519,17 +526,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return true;
     }
 
-    // If generic credentials or demo user entered
-    const defaultUser = users[0];
-    setCurrentUser(defaultUser);
-    setIsAuthenticated(true);
-    addAuditLog('USER_LOGIN', 'Authentication', defaultUser.email, `Demo login as ${defaultUser.role}`);
-    addToast('success', 'Welcome Back', `Signed in to ${currentTenant.name}`);
-    setActiveTab('dashboard');
-    return true;
+    try {
+      const res = await api.login({ email: trimmedEmail, password });
+      setToken(res.data.token);
+      setCurrentUser(res.data.user);
+      setIsAuthenticated(true);
+      addAuditLog('USER_LOGIN', 'Authentication', res.data.user.email, `Successful login as ${res.data.user.role}`, undefined, 'Session authorized');
+      addToast('success', 'Welcome Back', `Signed in as ${res.data.user.name} (${res.data.user.role})`);
+      setActiveTab('dashboard');
+      return true;
+    } catch (err: any) {
+      addToast('error', 'Sign In Failed', err?.message || 'Unable to authenticate with the backend.');
+      return false;
+    }
   };
 
-  const signup = (data: SignupData): boolean => {
+  const signup = async (data: SignupData): Promise<boolean> => {
     const newTenantId = 'tnt-' + (Date.now().toString(36));
     const newTenant: BusinessTenant = {
       id: newTenantId,
@@ -565,10 +577,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       accessModules: ['Dashboard', 'Sales', 'Purchase', 'Inventory', 'Customers', 'Suppliers', 'Collections', 'Reports', 'AI Center', 'Staff & Roles', 'Audit Logs', 'Settings']
     };
 
-    setCurrentTenant(newTenant);
-    setUsers(prev => [newOwner, ...prev]);
-    setCurrentUser(newOwner);
-    setIsAuthenticated(true);
+    try {
+      const res = await api.signup(data);
+      setToken(res.data.token);
+      setCurrentTenant(newTenant);
+      setUsers(prev => [newOwner, ...prev]);
+      setCurrentUser({ ...newOwner, ...res.data.user });
+      setIsAuthenticated(true);
+    } catch (err: any) {
+      addToast('error', 'Signup Failed', err?.message || 'Unable to create your backend account.');
+      return false;
+    }
 
     addAuditLog('TENANT_CREATED', 'BusinessTenant', newTenantId, `Created business tenant ${newTenant.name}`, undefined, 'New SaaS Onboarding');
     addAuditLog('USER_REGISTERED', 'User', newOwner.email, `Created Owner account for ${newOwner.name}`);
@@ -580,6 +599,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const logout = () => {
     addAuditLog('USER_LOGOUT', 'Authentication', currentUser?.email || 'unknown', 'User logged out');
+    removeToken();
     setIsAuthenticated(false);
     addToast('info', 'Signed Out', 'You have been safely signed out of your distribution workspace.');
     setActiveTab('login');

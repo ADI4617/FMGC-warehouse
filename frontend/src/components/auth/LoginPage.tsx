@@ -6,13 +6,13 @@ export const LoginPage: React.FC = () => {
   const { login, users, navigateTo } = useApp();
   
   const [email, setEmail] = useState('rajesh.k@apexfmcg.com');
-  const [password, setPassword] = useState('ApexSecure2026!');
+  const [password, setPassword] = useState('password123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -26,23 +26,22 @@ export const LoginPage: React.FC = () => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      const success = login(email, password);
-      setIsLoading(false);
-      if (!success) {
-        setErrorMessage('Invalid credentials or account suspended. Try a demo persona below.');
-      }
-    }, 450);
+    const success = await login(email, password);
+    setIsLoading(false);
+    if (!success) {
+      setErrorMessage('Invalid credentials or account suspended. Try a demo persona below.');
+    }
   };
 
-  const handleQuickPersona = (userEmail: string) => {
+  const handleQuickPersona = async (userEmail: string) => {
     setEmail(userEmail);
-    setPassword('ApexSecure2026!');
+    setPassword('password123');
     setIsLoading(true);
-    setTimeout(() => {
-      login(userEmail, 'ApexSecure2026!');
-      setIsLoading(false);
-    }, 300);
+    const success = await login(userEmail, 'password123');
+    setIsLoading(false);
+    if (!success) {
+      setErrorMessage('Unable to sign in with this demo persona.');
+    }
   };
 
   const demoPersonas: { name: string; role: UserRole; email: string; avatar: string; desc: string }[] = [

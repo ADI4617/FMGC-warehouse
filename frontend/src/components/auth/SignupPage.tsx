@@ -16,7 +16,7 @@ export const SignupPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -41,20 +41,18 @@ export const SignupPage: React.FC = () => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      const success = signup({
-        fullName,
-        businessName,
-        email,
-        phone,
-        password,
-        plan
-      });
-      setIsLoading(false);
-      if (!success) {
-        setErrorMessage('Failed to create business workspace. Please verify your inputs.');
-      }
-    }, 600);
+    const success = await signup({
+      fullName,
+      businessName,
+      email,
+      phone,
+      password,
+      plan
+    });
+    setIsLoading(false);
+    if (!success) {
+      setErrorMessage('Failed to create business workspace. Please verify your inputs.');
+    }
   };
 
   return (
