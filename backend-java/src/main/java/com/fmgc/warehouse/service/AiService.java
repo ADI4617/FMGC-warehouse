@@ -387,13 +387,17 @@ Provide a direct, data-driven answer to the specific question above.
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() == 400) {
-            throw new AppException(400, "AI_ERROR", "Gemini API rejected the request (400). Check your API key and request format.");
+            throw new AppException(400, "AI_ERROR", "Gemini API rejected the request (400). " + getGeminiErrorMessage(response.body()));
         }
         if (response.statusCode() == 403) {
             throw new AppException(403, "AI_ERROR", "Gemini API access denied (403). Check that your GEMINI_API_KEY is valid.");
         }
         if (response.statusCode() != 200) {
-            throw new AppException(500, "AI_ERROR", "Gemini API returned status " + response.statusCode());
+            throw new AppException(500, "AI_ERROR", "Gemini API returned status " + response.statusCode() + ". " + getGeminiErrorMessage(response.body()));
+        }
+
+        if (response.body() == null || response.body().isBlank()) {
+            throw new AppException(500, "AI_ERROR", "Gemini API returned an empty response.");
         }
 
         JsonNode root = objectMapper.readTree(response.body());
@@ -407,6 +411,23 @@ Provide a direct, data-driven answer to the specific question above.
             return "I could not generate a response. Please try rephrasing your question.";
         }
         return text;
+    }
+
+    private String getGeminiErrorMessage(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return "No error details were returned by the AI provider.";
+        }
+
+        try {
+            String message = objectMapper.readTree(responseBody).at("/error/message").asText("");
+            if (!message.isBlank()) {
+                return message;
+            }
+        } catch (Exception ignored) {
+            // Fall through to the generic message so raw provider payloads are not exposed.
+        }
+
+        return "The AI provider returned an unexpected error response.";
     }
 
     private void checkApiKey() {

@@ -17,7 +17,53 @@ export function removeToken() {
   localStorage.removeItem('fmcg_jwt_token');
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<{ success: boolean; data: T; message?: string }> {
+type ApiEnvelope<T> = { success: boolean; data: T; message?: string; code?: string; errors?: string[] };
+
+function getErrorMessage(status: number, json: unknown, fallbackText: string): string {
+  if (json && typeof json === 'object') {
+    const body = json as { message?: unknown; code?: unknown; errors?: unknown };
+    const parts = [
+      typeof body.code === 'string' ? body.code : undefined,
+      typeof body.message === 'string' ? body.message : undefined,
+    ].filter(Boolean);
+
+    if (Array.isArray(body.errors) && body.errors.length > 0) {
+      parts.push(body.errors.filter((item): item is string => typeof item === 'string').join(', '));
+    }
+
+    if (parts.length > 0) {
+      return parts.join(': ');
+    }
+  }
+
+  if (fallbackText.trim()) {
+    return fallbackText.trim();
+  }
+
+  return `API request failed with status ${status}`;
+}
+
+async function parseResponseBody<T>(response: Response): Promise<ApiEnvelope<T> | null> {
+  if (response.status === 204) {
+    return null;
+  }
+
+  const text = await response.text();
+  if (!text.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as ApiEnvelope<T>;
+  } catch {
+    if (!response.ok) {
+      throw new Error(getErrorMessage(response.status, null, text));
+    }
+    throw new Error('API returned an invalid JSON response.');
+  }
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiEnvelope<T>> {
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -33,10 +79,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers,
   });
 
-  const json = await response.json();
+  const json = await parseResponseBody<T>(response);
 
   if (!response.ok) {
-    throw new Error(json.message || 'API request failed');
+    throw new Error(getErrorMessage(response.status, json, ''));
+  }
+
+  if (!json) {
+    throw new Error('API returned an empty response.');
   }
 
   return json;

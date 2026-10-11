@@ -1,8 +1,13 @@
 package com.fmgc.warehouse.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fmgc.warehouse.dto.response.ErrorResponse;
 import com.fmgc.warehouse.security.JwtAuthFilter;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -19,10 +24,14 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final CorsConfigurationSource corsConfigurationSource;
+    private final ObjectMapper objectMapper;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, CorsConfigurationSource corsConfigurationSource) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          CorsConfigurationSource corsConfigurationSource,
+                          ObjectMapper objectMapper) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.corsConfigurationSource = corsConfigurationSource;
+        this.objectMapper = objectMapper;
     }
 
     @Bean
@@ -45,6 +54,20 @@ public class SecurityConfig {
             )
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    objectMapper.writeValue(response.getWriter(),
+                            new ErrorResponse(false, "Authentication is required", "UNAUTHORIZED", List.of()));
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpStatus.FORBIDDEN.value());
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    objectMapper.writeValue(response.getWriter(),
+                            new ErrorResponse(false, "Access denied", "FORBIDDEN", List.of()));
+                })
+            )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
